@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Historical Buildings Guide · Henan University Minglun Campus</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        html, body { height: 100%; overflow: hidden; }
+
+        /* 顶部导航栏 — 居中 + 校徽 + 大厂风格 */
+        .header {
+            position: fixed; top: 0; left: 0; right: 0; height: 65px;
+            background: linear-gradient(90deg, #002b5c, #004b99);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+            gap: 14px;
+        }
+
+        .logo {
+            height: 42px;
+            width: auto;
+            border-radius: 4px;
+        }
+
+        .header-center {
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            letter-spacing: 0.3px;
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            position: fixed; top: 65px; left: 0; bottom: 0; width: 260px;
+            background: #f9fafb; border-right: 1px solid #e5e7eb;
+            overflow-y: auto; z-index: 999; padding: 18px;
+        }
+        .sidebar h2 { font-size: 16px; color: #111827; margin-bottom: 14px; font-weight: 600; }
+        .site-list { list-style: none; }
+        .site-list li {
+            padding: 11px 14px; margin-bottom: 8px; background: #ffffff; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s; border: 1px solid #e5e7eb; font-size: 14px;
+        }
+        .site-list li:hover { background: #eff6ff; border-color: #2563eb; }
+
+        /* 地图容器 */
+        #map { position: fixed; top: 65px; left: 260px; right: 0; bottom: 0; }
+
+        /* 高级弹窗样式 */
+        .custom-popup {
+            width: 280px;
+            border-radius: 10px;
+            overflow: hidden;
+            font-family: inherit;
+        }
+        .popup-img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+        .popup-body {
+            padding: 12px 14px;
+        }
+        .popup-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 6px;
+        }
+        .popup-desc {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #4b5563;
+        }
+
+        /* 美化地图弹窗箭头 */
+        .leaflet-popup-content-wrapper {
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 0;
+            overflow: hidden;
+        }
+        .leaflet-popup-tip {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img class="logo" src="https://www.henu.edu.cn/images/logo.png" alt="HENU Logo">
+        <div class="header-center">
+            <h1>Henan University Historical Sites Map</h1>
+            <p>Interactive Guide to Campus Heritage</p>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h2>List of Sites</h2>
+        <ul class="site-list" id="siteList"></ul>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        // 初始化地图 —— 中心点已改为你指定的坐标
+        const map = L.map('map').setView([34.812394, 114.363921], 17);
+
+        // 使用OpenStreetMap底图
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // ✅ 明伦校区（开封老校区）10个景点 精准坐标
+        const sites = [
+            {
+                lat: 34.809040,
+                lng: 114.363655,
+                name: "South Gate",
+                desc: "The southern gate of Minglun Campus of Henan University was built in 1936. It is a Chinese-style classical pagoda with ornate eaves and arches, presenting a simple yet dignified appearance. The front reads 'Henan University', and the school motto on the inner side highlights the educational heritage. This is a landmark building of Henan University and a national key cultural relic protection unit.",
+                img: "./images/明伦校区南大门.jpeg"
+            },
+            {
+                lat: 34.809804,
+                lng: 114.363942,
+                name: "Former Gate of Preparatory School for Studying in Europe and America",
+                desc: " This is the reconstructed gate of the Henan School for Students Going Abroad to Europe and America within the Minglun Campus of Henan University. It replicates the gate of the predecessor of Henan University in 1912. At that time, the preparatory school was one of the three major bases for studying abroad in the Republic of China, initiating modern higher education in Henan. With the original intention of saving the country through education, it cultivated a large number of talents who studied abroad to serve the country and witnessed the era's trend of the westward spread of knowledge and the pursuit of industrial strength.",
+                img: "./images/留学欧美预备学校旧址大门.jpeg"
+            },
+            {
+                lat: 34.810447,
+                lng: 114.364076,
+                name: "No.6 Building (White Building / Old Library)",
+                desc: "Building No. 6 of Henan University (Bowen Building) was completed in 1919 and is the earliest existing modern building with a blend of Chinese and Western architectural styles on the campus. It was once the core teaching venue of the preparatory school. Li Dazhao gave speeches here to spread progressive ideas. It witnessed the beginning of modern higher education in Henan and the course of the Red Revolution. It is a key national cultural relic protection unit.",
+                img: "./images/六号楼.jpg"
+            },
+            {
+                lat: 34.810297,
+                lng: 114.363105,
+                name: "Anti-Japanese War Monument",
+                desc: "The Anti-Japanese War Memorial of Henan University commemorates the arduous journey of the university's relocation and continuous operation from 1937 to 1945, honors the teachers and students who sacrificed their lives in the Tan Tou Massacre, and highlights the indomitable patriotic spirit and national integrity of the people of Henan University.",
+                img: "./images/抗战纪念碑.jpeg"
+            },
+            {
+                lat: 34.810967,
+                lng: 114.363551,
+                name: "No.7 Building (School of History and Culture)",
+                desc: "The No. 7 Building of Henan University is also known as the Biao Ya Building. It was completed in 1925 and is a typical example of a blend of Chinese and Western architecture. Its design is elegant and beautiful, and it was once praised by Liang Sicheng and Lin Huiyin as 'the Beauty Building'. The structure is solemn and exquisite. It is now a national key cultural relic protection unit and is the location of the College of History and Culture.",
+                img: "./images/七号楼.jpg"
+            },
+            {
+                lat: 34.811222,
+                lng: 114.362223,
+                name: "Imperial Examination Monument (North of School of Foreign Languages)",
+                desc: "The Imperial Examination Stone Steles of Henan University consists of two ancient stone tablets from the Qing Dynasty. They respectively record the renovation of the Henan Imperial Examination Hall during the Yongzheng period and the reconstruction during the Daoguang period. This place was once the examination venue for the imperial examinations in Henan during the Qing Dynasty, and it was also the venue for the last two imperial examinations in the end of the imperial examination system. It witnessed the end of the thousand-year imperial examination system and holds significant historical value.",
+                img: "./images/贡院碑.jpeg"
+            },
+            {
+                lat: 34.812702,
+                lng: 114.362655,
+                name: "New Library (Yifu Building)",
+                desc: "The Yifu Library (New Building) of Henan University was funded and constructed by Mr. Shao Yifu. The architectural style is a blend of Chinese and Western elements, complementing the surrounding historical buildings. The library houses a rich collection of books and is well-equipped, featuring functions for reading, collection, and academic exchanges. It is a landmark cultural building on the campus and an important repository of literature and information.",
+                img: "./images/新图书馆.jpeg"
+            },
+            {
+                lat: 34.813372,
+                lng: 114.361936,
+                name: "No.10 Building (Airplane Building)",
+                desc: "The No.10 Building of Henan University is also known as Shangxue Building. It was completed in 1957 and is a classic Soviet-style architectural structure. Due to its planar shape resembling an airplane, it is called 'Airplane Building'. It is made of red bricks, symmetrical and dignified. It was once the largest teaching building on campus, undertaking the teaching tasks of multiple departments and witnessing the development of Henan University over the past decades.",
+                img: "./images/十号楼.jpeg"
+            },
+            {
+                lat: 34.813354,
+                lng: 114.363856,
+                name: "Grand Auditorium",
+                desc: "The Grand Auditorium of Henan University was built in 1931 and completed in 1934. It is a combination of Chinese and Western architectural styles, featuring a palace-like design. With a grand scale, it can accommodate over three thousand people. It is a national key cultural relic protection unit and also a symbol of the university's century-old heritage and spirit.",
+                img: "./images/大礼堂.jpg"
+            },
+            {
+                lat: 34.812817,
+                lng: 114.364575,
+                name: "East No.10 Residence",
+                desc: "The East No.10 Dormitory of Henan University was the early student dormitory of the school. It is a classic mixed-style brick and wood structure building. With its blue bricks and grey tiles, and regular shapes, it witnessed the study and growth of generations of students, and carried the profound campus years and humanistic memories.",
+                img: "./images/东十二斋.jpg"
+            }
+        ];
+
+        // 存储标记，方便侧边栏跳转
+        const markers = [];
+
+        // 添加标记与弹窗
+        sites.forEach((s, index) => {
+            const popupContent = `
+                <div class="custom-popup">
+                    <img src="${s.img}" class="popup-img" alt="${s.name}">
+                    <div class="popup-body">
+                        <div class="popup-title">${s.name}</div>
+                        <div class="popup-desc">${s.desc}</div>
+                    </div>
+                </div>
+            `;
+            const marker = L.marker([s.lat, s.lng]).addTo(map).bindPopup(popupContent);
+            markers.push(marker);
+        });
+
+        // 生成侧边栏列表
+        const listEl = document.getElementById('siteList');
+        sites.forEach((s, index) => {
+            const li = document.createElement('li');
+            li.textContent = s.name;
+            li.addEventListener('click', () => {
+                map.setView([s.lat, s.lng], 18);
+                markers[index].openPopup();
+            });
+            listEl.appendChild(li);
+        });
+
+        // 开启定位
+        map.locate({ setView: false, maxZoom: 18 });
+    </script>
+</body>
+</html>
